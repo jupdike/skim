@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-// skim shows the C# and Razor files of the pull requests your branches would open, as "header" views:
-// signatures, attributes and comments, with bodies folded. Run `node Tools/skim/skim.mjs --help`.
+// skim shows the C#, Razor and TypeScript files of the pull requests your branches would open, as
+// "header" views: signatures, attributes and comments, with bodies folded. Run `node Tools/skim/skim.mjs --help`.
 
 import { execFile } from 'node:child_process';
 import { readFile } from 'node:fs/promises';
@@ -9,12 +9,14 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
 import { skeletonCSharp } from './lib/csharpSkeleton.mjs';
-import { DEFAULT_REPOS, loadPrGroups } from './lib/prFiles.mjs';
+import { DEFAULT_REPOS, loadPrGroups, SKIMMABLE } from './lib/prFiles.mjs';
 import { skeletonRazor } from './lib/razorSkeleton.mjs';
+import { loadTypeScript } from './lib/typescript.mjs';
+import { skeletonTypeScript } from './lib/typescriptSkeleton.mjs';
 
 const HELP = `Usage: node Tools/skim/skim.mjs [options] [path-or-glob ...]
 
-Shows the .cs and .razor files in the PR that each repo's current branch would open.
+Shows the .cs, .razor and .ts files in the PR that each repo's current branch would open.
 
 Options:
   --new              Only show files the PRs add.
@@ -69,21 +71,36 @@ if(values.check) {
 
 /** Resolves a root-relative path from the browser, refusing anything outside the root or not skimmable. */
 function resolveFile(relative) {
-	if(typeof relative !== 'string' || !/\.(cs|razor)$/.test(relative)) {
+	if(typeof relative !== 'string' || !SKIMMABLE.test(relative)) {
 		return null;
 	}
 	const full = path.resolve(root, relative);
 	return full.startsWith(root + path.sep) ? full : null;
 }
 
+const NOT_SKIMMABLE = 'That path is not a .cs, .razor or .ts file under the tb folder.';
+
 async function skeletonOf(relative, options) {
 	const full = resolveFile(relative);
 	if(full == null) {
-		throw Object.assign(new Error('That path is not a .cs or .razor file under the tb folder.'), { status: 400 });
+		throw Object.assign(new Error(NOT_SKIMMABLE), { status: 400 });
 	}
 	const src = (await readFile(full, 'utf8')).replace(/\r\n/g, '\n');
-	const result = relative.endsWith('.razor') ? skeletonRazor(src, options) : skeletonCSharp(src, options);
+	const result = relative.endsWith('.razor') ? skeletonRazor(src, options)
+		: relative.endsWith('.cs') ? skeletonCSharp(src, options)
+		: await skeletonOfTypeScript(src, { ...options, fileName: relative });
 	return { ...result, totalLines: src.split('\n').length };
+}
+
+/** Builds a TypeScript skeleton, or shows the file as it is when no TypeScript compiler is installed. */
+async function skeletonOfTypeScript(src, options) {
+	const { ts, tried } = await loadTypeScript(root);
+	if(ts != null) {
+		return skeletonTypeScript(src, options, ts);
+	}
+	const warning = `No TypeScript compiler was found, so this file is shown unfolded. skim looked in ${tried.join(', ')}. `
+		+ 'Set SKIM_TYPESCRIPT to the folder of a typescript package, or run npm ci in Athena/Venus.';
+	return { text: src, folds: [], warnings: [warning] };
 }
 
 async function check(groups) {
@@ -132,7 +149,7 @@ const server = http.createServer(async (req, res) => {
 		if(url.pathname === '/api/raw') {
 			const full = resolveFile(url.searchParams.get('path'));
 			if(full == null) {
-				send(res, 400, { error: 'That path is not a .cs or .razor file under the tb folder.' });
+				send(res, 400, { error: NOT_SKIMMABLE });
 				return;
 			}
 			send(res, 200, { text: (await readFile(full, 'utf8')).replace(/\r\n/g, '\n') });

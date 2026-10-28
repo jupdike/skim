@@ -1,5 +1,5 @@
 // These tests cover the C# and Razor constructs that a brace-counting skeletonizer most easily gets wrong.
-// Run them with `node --test Tools/skim/test`.
+// Run them with `node --test 'Tools/skim/test/*.test.mjs'`.
 
 import assert from 'node:assert/strict';
 import test from 'node:test';

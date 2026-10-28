@@ -39,6 +39,14 @@ function highlight(text, language) {
 	return escapeHtml(text);
 }
 
+/** Returns the language of a skimmable file: "razor", "csharp" or "typescript". */
+function languageOf(path) {
+	if(path.endsWith('.razor')) {
+		return 'razor';
+	}
+	return path.endsWith('.cs') ? 'csharp' : 'typescript';
+}
+
 async function getJson(url) {
 	const response = await fetch(url);
 	const body = await response.json();
@@ -197,7 +205,7 @@ async function renderFile() {
 	if(path == null) {
 		return;
 	}
-	const language = path.endsWith('.razor') ? 'razor' : 'csharp';
+	const language = languageOf(path);
 	const query = new URLSearchParams({
 		path,
 		hidePrivate: state.prefs.hidePrivate ? '1' : '0',
@@ -218,7 +226,7 @@ async function renderFile() {
 	if(state.raw) {
 		state.skeleton = null;
 		$('warnings').hidden = true;
-		$('code').innerHTML = highlight(data.text, language === 'razor' ? 'xml' : 'csharp');
+		$('code').innerHTML = highlight(data.text, language === 'razor' ? 'xml' : language);
 		$('file-stats').textContent = `${data.text.split('\n').length} lines`;
 		return;
 	}
@@ -233,11 +241,12 @@ async function renderFile() {
 	});
 }
 
-/** Highlights skeleton text as C#. highlight.js has no Razor grammar, so in a .razor skeleton each
- * `@* … *@` comment is cut out and shown as a comment, and the code between comments is highlighted. */
+/** Highlights skeleton text in the file's language. highlight.js has no Razor grammar, so in a .razor
+ * skeleton each `@* … *@` comment is cut out and shown as a comment, and the code between comments is
+ * highlighted as C#. */
 function highlightSkeleton(text, language) {
 	if(language !== 'razor') {
-		return highlight(text, 'csharp');
+		return highlight(text, language);
 	}
 	return text.split(/(@\*[\s\S]*?\*@)/).map((part, i) =>
 		i % 2 === 1 ? `<span class="hljs-comment">${escapeHtml(part)}</span>` : highlight(part, 'csharp')).join('');
@@ -257,7 +266,10 @@ function setFoldOpen(span, open) {
 	}
 	span.classList.toggle('open', open);
 	if(open) {
-		const body = highlight(fold.body, fold.kind === 'markup' ? 'xml' : 'csharp');
+		// A fold in a .razor file is markup or the C# of its @code block. Any other fold is in the
+		// file's own language.
+		const language = languageOf(state.selected ?? '');
+		const body = highlight(fold.body, fold.kind === 'markup' ? 'xml' : language === 'razor' ? 'csharp' : language);
 		span.innerHTML = `<button class="chip" title="Fold lines ${fold.startLine}–${fold.endLine}">▴</button>${body}`;
 	} else {
 		span.innerHTML = chipHtml(fold);
