@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>skim</title>
+	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css" media="(prefers-color-scheme: light)">
+	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css" media="(prefers-color-scheme: dark)">
+	<link rel="stylesheet" href="app.css">
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/csharp.min.js"></script>
+</head>
+<body>
+	<aside id="sidebar">
+		<div class="side-head">
+			<div class="brand">skim <span id="summary" class="muted"></span></div>
+			<button id="refresh" class="icon-button" title="Reload the PR file lists from git and gh">↻</button>
+		</div>
+		<div class="side-tools">
+			<input id="filter" type="search" placeholder="Filter files  ( / )" autocomplete="off" spellcheck="false">
+			<label class="check"><input id="newOnly" type="checkbox"> New files only</label>
+		</div>
+		<nav id="groups"><div class="muted pad">Reading the branches…</div></nav>
+		<div class="side-foot muted">j/k next/prev · / filter · e expand all · r raw</div>
+	</aside>
+	<main id="main">
+		<header id="file-head" hidden>
+			<div class="file-title">
+				<span id="file-status" class="badge"></span>
+				<span id="file-path"></span>
+				<button id="copy-path" class="link-button" title="Copy the path">copy</button>
+			</div>
+			<div class="file-tools">
+				<span id="file-stats" class="muted"></span>
+				<label class="check"><input id="hidePrivate" type="checkbox"> Hide private</label>
+				<label class="check"><input id="hideComments" type="checkbox"> Hide comments</label>
+				<button id="expand-all" class="tool-button">Expand all</button>
+				<button id="collapse-all" class="tool-button">Collapse all</button>
+				<button id="raw" class="tool-button" aria-pressed="false">Raw</button>
+			</div>
+		</header>
+		<div id="warnings" hidden></div>
+		<pre id="code-wrap"><code id="code" class="hljs"></code></pre>
+		<div id="empty" class="muted pad">Pick a file on the left.</div>
+	</main>
+	<script src="app.js"></script>
+</body>
+</html>
